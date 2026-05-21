@@ -36,5 +36,5 @@ void split_command(t_args *args, char *commande_saisie) {
         token = strtok(NULL, " ");
     }
     
-    args->cmd[i] = NULL; // Git/Linux ont toujours besoin que le tableau se termine par NULL
+    args->cmd[i] = NULL; // car Git et Linux ont toujours besoin que le tableau se termine par NULL
 }
