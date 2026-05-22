@@ -94,5 +94,5 @@ char    *execute_cmd(char **cmd, int *exit_status)
         return (NULL);
     }
 
-   \ return (resultat);
+    return (resultat);
 }
