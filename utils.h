@@ -12,5 +12,6 @@
 
 void    precise_sleep(double secondes);
 void    setup_signals(void);
+int check_keyboard(void); // Pour les signaux systèmes
 
 #endif

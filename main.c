@@ -3,125 +3,129 @@
 #include <unistd.h>
 #include <string.h>
 #include "args.h" 
-#include "executor.h"  
-#include "display.h"   
-#include "utils.h"    
+#include "executor.h"
+#include "display.h"
+#include "utils.h"
+#include "help.h"
 
-int main() {
-    // 1. Initialisation avec les valeurs par défaut
-    t_args args = init_args(); 
-
-    int choix = 0;
-    char commande_saisie[256];
-
-    printf("==================================================\n");
-    printf("    BIENVENUE DANS VOTRE ASSISTANT MYWATCH        \n");
-    printf("==================================================\n\n");
-
-    // 2. Menu interactif pour configurer les options
-    do {
-        printf("Configuration actuelle :\n");
-        printf("  1. Modifier l'intervalle de temps (Actuel : %.1fs)\n", args.interval);
-        printf("  2. Surligner les changements (Actuel : %s)\n", args.highlight ? "OUI" : "NON");
-        printf("  3. Masquer l'en-tête/titre (Actuel : %s)\n", args.no_title ? "OUI" : "NON");
-        printf("  4. Quitter si la commande échoue (Actuel : %s)\n", args.exit_error ? "OUI" : "NON");
-        printf("  5. Valider les options et passer à la commande\n");
-        printf("\nVotre choix (1-5) : ");
-        
-        if (scanf("%d", &choix) != 1) {
-            printf("Saisie invalide !\n");
-            return 1;
+//  fonction pour enlever les couleurs ANSI si l'option -C est active
+void strip_ansi_colors(char *str) {
+    if (!str) return;
+    char *src = str;
+    char *dst = str;
+    while (*src) {
+        if (*src == '\033' && *(src + 1) == '[') {
+            src += 2;
+            while (*src && *src != 'm') {
+                src++;
+            }
+            if (*src == 'm') src++;
+        } else {
+            *dst++ = *src++;
         }
-        
-        while (getchar() != '\n'); // Vider le tampon
+    }
+    *dst = '\0';
+}
 
-        switch(choix) {
-            case 1:
-                printf("Entrez le nouvel intervalle en secondes (ex: 1.5) : ");
-                if (scanf("%lf", &args.interval) != 1) args.interval = 2.0;
-                while (getchar() != '\n'); 
-                break;
-            case 2:
-                args.highlight = !args.highlight;
-                break;
-            case 3:
-                args.no_title = !args.no_title;
-                break;
-            case 4:
-                args.exit_error = !args.exit_error;
-                break;
-            case 5:
-                printf("\nOptions configurées avec succès !\n");
-                break;
-            default:
-                printf("Option inconnue, réessayez.\n");
-        }
-        printf("\n--------------------------------------------------\n");
-    } while (choix != 5);
-
-    //  Demande de la commande à exécuter
-    printf("\nEntrez la commande dont vous souhaitez voir l'évolution (ex: ls -l) :\n");
-    printf("> ");
-    if (fgets(commande_saisie, sizeof(commande_saisie), stdin) != NULL) {
-        commande_saisie[strcspn(commande_saisie, "\n")] = 0; 
+int main(int argc, char **argv) {
+    // Vérification de l'aide
+    if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
+        afficher_help();
+        return 0;
     }
 
-    // Découpage de la commande via le module args.c
-    split_command(&args, commande_saisie);
+    //  Analyse manuelle de la ligne de commande 
+    t_args args = parse_args(argc, argv); 
 
-    //  AFFICHAGE DE LA NOUVELLE CONFIGURATION
-  
-    printf("\n================ CONFIGURATION FINALE ================\n");
-    printf("Intervalle choisi (-n)   : %.1fs\n", args.interval);
-    printf("Mode Diff (-d)      : %s\n", args.highlight ? "Activé" : "Désactivé");
-    printf("Masquer Titre (-t)  : %s\n", args.no_title ? "Oui" : "Non");
-    printf("Quitter Erreur (-e) : %s\n", args.exit_error ? "Oui" : "Non");
-    
-    printf("Commande préparée   : ");
+    // Reconstitution de la commande  pour l'en-tête
+    static char commande_complete[512] = "";
     int i = 0;
     while (args.cmd[i] != NULL) {
-        printf("[%s] ", args.cmd[i]);
+        strcat(commande_complete, args.cmd[i]);
+        strcat(commande_complete, " ");
         i++;
     }
-    printf("\n======================================================\n");
-    printf("\nLancement du mode surveillance dans 2 secondes...\n");
-    sleep(2); 
+    args.command = commande_complete;
 
-    
-    init_signals(); // Permet d'attraper le Ctrl+C pour fermer proprement ncurses
+    char *current_output = NULL;
+    char *previous_output = NULL;
 
-     
-    display_init();  // Initialisation de la fenêtre graphique
+    //  Configuration des signaux (Ctrl+C)
+    setup_signals(); 
 
+    // Initialisation de l'écran alternatif
+    display_init(); 
+
+    // Boucle de surveillance principale
     while(1) {
         int exit_status = 0;
         
-        // Exécution de la commande  
-        char *output = execute_cmd(args.cmd, &exit_status); 
+        // Exécution de la commande système
+        current_output = execute_cmd(args.cmd, &exit_status); 
         
-        // Gestion de l'option -e 
+        // Option -b : Bip sonore si la commande échoue 
+        if (args.beep && exit_status != 0) {
+            printf("\a");
+            fflush(stdout);
+        }
+
+        // Option -C : Suppression des couleurs ANSI si l'utilisateur l'a demandé
+        if (args.color_mode == 0) {
+            strip_ansi_colors(current_output);
+        }
+
+        // Option -e : Quitter immédiatement si la commande échoue
         if (args.exit_error && exit_status != 0) {
-            free(output);
+            if (current_output) free(current_output);
             break; 
         }
 
-        // Affichage de l'en-tête 
+        // Affichage de l'en-tête graphique
         if (!args.no_title) {
-            display_header(&args, commande_saisie);
+            display_header(&args);
+        } else {
+            printf("\033[2J\033[H"); 
         }
         
-        // Affichage du résultat 
-        display_output(output, args.highlight);
+        // Affichage du texte avec surlignage des changements
+        display_output(current_output, previous_output, args.highlight);
 
-        free(output);
+        // Option -g : Quitter si l'output a changé par rapport au tour précédent
+        if (args.chgexit && previous_output != NULL && strcmp(current_output, previous_output) != 0) {
+            if (current_output) free(current_output);
+            break;
+        }
+
+        // Sauvegarde de l'historique pour le prochain cycle
+        if (previous_output) {
+            free(previous_output);
+        }
+        previous_output = current_output;
         
-        // Pause pour l'intervalle
-        usleep((useconds_t)(args.interval * 1000000));
+        // 7. Attente et écoute active du clavier ('q' pour quitter, 'Espace' pour forcer)
+        double temps_ecoule = 0;
+        int force_refresh = 0;
+        
+        while (temps_ecoule < args.interval && !force_refresh) {
+            int key = check_keyboard(); // Appelle la fonction de Gregory dans utils.c
+            if (key == 1) { 
+                display_cleanup();
+                if (previous_output) free(previous_output);
+                return 0;
+            }
+            if (key == 2) { 
+                force_refresh = 1; 
+            }
+            usleep(50000); // Pause de 50ms pour ne pas surcharger le CPU
+            if (!force_refresh) {
+                temps_ecoule += 0.05;
+            }
+        }
     }
     
-    // Fermeture  de ncurses
+    // 8. Nettoyage final avant de quitter proprement
     display_cleanup();
-    free(args.cmd); 
+    if (previous_output) free(previous_output);
 
     return 0;
 }
