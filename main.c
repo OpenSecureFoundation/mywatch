@@ -7,6 +7,7 @@
 #include "display.h"
 #include "utils.h"
 #include "keyboard.h"
+#include "screenshot.h"
 
 int main(int argc, char **argv)
 {
@@ -35,7 +36,6 @@ int main(int argc, char **argv)
     while (1)
     {
         debut = time(NULL);
-
         resultat = execute_cmd(args.cmd, &statut, args.exec_direct);
 
         if (resultat == NULL)
@@ -120,6 +120,12 @@ int main(int argc, char **argv)
                 }
                 if (touche == ' ')
                     sauter_attente = 1;
+                if (touche == 's' || touche == 'S')
+                {
+                    restore_mode_clavier();
+                    prendre_screenshot(precedent ? precedent : "");
+                    set_mode_clavier();
+                }
             }
 
             if (!sauter_attente)
