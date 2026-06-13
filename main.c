@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     {
         debut = time(NULL);
 
-        resultat = execute_cmd(args.cmd, &statut);
+        resultat = execute_cmd(args.cmd, &statut, args.exec_direct);
 
         if (resultat == NULL)
         {

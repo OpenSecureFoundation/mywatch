@@ -8,6 +8,7 @@ t_args  parse_args(int argc, char **argv)
 {
     t_args  args;
     int     i;
+    char    *env_interval;
 
     if (argc == 2 && strcmp(argv[1], "--help") == 0)
     {
@@ -21,27 +22,31 @@ t_args  parse_args(int argc, char **argv)
         exit(0);
     }
 
-    args.interval   = 2.0 ;
-    args.interval   = 2.0;
-    args.highlight  = 0;
-    args.no_title   = 0;
-    args.exit_error = 0;
-    args.chgexit    = 0;
-    args.beep       = 0;
-    args.precise    = 0;
-    args.equexit    = 0;
-    args.no_wrap    = 0;
-    args.color      = 0;
-    args.no_color   = 0;
-    args.cmd        = NULL;
+    args.interval = 2.0;
+
+    env_interval = getenv("WATCH_INTERVAL");
+    if (env_interval != NULL)
+    {
+        args.interval = atof(env_interval);
+        if (args.interval <= 0)
+            args.interval = 2.0;
+    }
+
+    args.highlight   = 0;
+    args.no_title    = 0;
+    args.exit_error  = 0;
+    args.chgexit     = 0;
+    args.beep        = 0;
+    args.precise     = 0;
+    args.equexit     = 0;
+    args.no_wrap     = 0;
+    args.color       = 0;
+    args.no_color    = 0;
+    args.follow      = 0;
+    args.exec_direct = 0;
+    args.cmd         = NULL;
+
     i = 1;
-char *env_interval = getenv("WATCH_INTERVAL");
-if (env_interval != NULL)
-{
-    args.interval = atof(env_interval);
-    if (args.interval <= 0)
-        args.interval = 2.0;
-}
     while (i < argc && argv[i][0] == '-')
     {
         if (strcmp(argv[i], "-n") == 0)
@@ -89,6 +94,10 @@ if (env_interval != NULL)
             args.color = 1;
         else if (strcmp(argv[i], "-C") == 0)
             args.no_color = 1;
+        else if (strcmp(argv[i], "-f") == 0)
+            args.follow = 1;
+        else if (strcmp(argv[i], "-x") == 0)
+            args.exec_direct = 1;
         else
         {
             fprintf(stderr, "ERREUR : option inconnue\n");

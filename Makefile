@@ -1,7 +1,7 @@
 CC     = gcc
 CFLAGS = -Wall -Wextra -Werror
 LIBS   = -lncurses
-SRC = main.c args.c executor.c display.c utils.c error.c help.c keyboard.c
+SRC = main.c args.c executor.c display.c utils.c error.c help.c keyboard.c wrap.c color.c shell.c
 NAME   = mywatch2
 
 all: $(NAME)
