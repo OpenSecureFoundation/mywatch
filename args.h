@@ -10,7 +10,11 @@ typedef struct s_args
     int     chgexit;
     int     beep;
     int     precise;
-    char    **cmd;
+    int	    equexit;
+    int     no_wrap;
+    int     color;
+    int     no_color; 
+   char    **cmd;
 } t_args;
 
 t_args  parse_args(int argc, char **argv);

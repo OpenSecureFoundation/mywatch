@@ -20,10 +20,14 @@ int main(int argc, char **argv)
     double  attente;
     char    touche;
     int     sauter_attente;
+    int     compteur_identique;
+    int     code_sortie;
 
     args      = parse_args(argc, argv);
     precedent = NULL;
     statut    = 0;
+    compteur_identique = 0;
+    code_sortie = 0;
 
     setup_signals();
     set_mode_clavier();
@@ -37,6 +41,7 @@ int main(int argc, char **argv)
         if (resultat == NULL)
         {
             printf("\033[31m Arret du programme. \033[0m\n");
+            code_sortie = 2;
             break ;
         }
 
@@ -48,6 +53,7 @@ int main(int argc, char **argv)
             free(resultat);
             if (precedent)
                 free(precedent);
+            code_sortie = statut;
             break ;
         }
 
@@ -60,6 +66,24 @@ int main(int argc, char **argv)
                 free(resultat);
                 free(precedent);
                 precedent = NULL;
+                code_sortie = 0;
+                break ;
+            }
+        }
+
+        if (args.equexit && precedent != NULL)
+        {
+            if (strcmp(resultat, precedent) == 0)
+                compteur_identique++;
+            else
+                compteur_identique = 0;
+
+            if (compteur_identique >= args.equexit)
+            {
+                free(resultat);
+                free(precedent);
+                precedent = NULL;
+                code_sortie = 0;
                 break ;
             }
         }
@@ -79,8 +103,6 @@ int main(int argc, char **argv)
         if (attente <= 0)
             attente = 0;
 
-        /* on decoupe l attente en petits morceaux pour pouvoir */
-        /* detecter une touche pendant qu on attend */
         sauter_attente = 0;
         while (attente > 0 && !sauter_attente)
         {
@@ -113,5 +135,5 @@ int main(int argc, char **argv)
     if (precedent)
         free(precedent);
 
-    return (0);
+    return (code_sortie);
 }

@@ -21,6 +21,7 @@ t_args  parse_args(int argc, char **argv)
         exit(0);
     }
 
+    args.interval   = 2.0 ;
     args.interval   = 2.0;
     args.highlight  = 0;
     args.no_title   = 0;
@@ -28,9 +29,19 @@ t_args  parse_args(int argc, char **argv)
     args.chgexit    = 0;
     args.beep       = 0;
     args.precise    = 0;
+    args.equexit    = 0;
+    args.no_wrap    = 0;
+    args.color      = 0;
+    args.no_color   = 0;
     args.cmd        = NULL;
-
     i = 1;
+char *env_interval = getenv("WATCH_INTERVAL");
+if (env_interval != NULL)
+{
+    args.interval = atof(env_interval);
+    if (args.interval <= 0)
+        args.interval = 2.0;
+}
     while (i < argc && argv[i][0] == '-')
     {
         if (strcmp(argv[i], "-n") == 0)
@@ -45,6 +56,21 @@ t_args  parse_args(int argc, char **argv)
             if (args.interval <= 0)
                 args.interval = 2.0;
         }
+        else if (strcmp(argv[i], "-q") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                fprintf(stderr, "ERREUR : -q necessite une valeur\n");
+                exit(1);
+            }
+            i++;
+            args.equexit = atoi(argv[i]);
+            if (args.equexit <= 0)
+            {
+                fprintf(stderr, "ERREUR : -q doit etre superieur a 0\n");
+                exit(1);
+            }
+        }
         else if (strcmp(argv[i], "-d") == 0)
             args.highlight = 1;
         else if (strcmp(argv[i], "-t") == 0)
@@ -57,6 +83,12 @@ t_args  parse_args(int argc, char **argv)
             args.beep = 1;
         else if (strcmp(argv[i], "-p") == 0)
             args.precise = 1;
+        else if (strcmp(argv[i], "-w") == 0)
+            args.no_wrap = 1;
+        else if (strcmp(argv[i], "-c") == 0)
+            args.color = 1;
+        else if (strcmp(argv[i], "-C") == 0)
+            args.no_color = 1;
         else
         {
             fprintf(stderr, "ERREUR : option inconnue\n");
